@@ -6,39 +6,38 @@ import time
 
 def main():
     start_time = time.time()
-    init()
-    get_submissions()
+    
+    for subreddit in ['upliftingnews', 'news', 'worldnews']:
+        for year in [2015, 2016, 2017]:
+            init(year, subreddit)
+            print(time.strftime("%a %b %d %H:%M:%S %Z") + " -- Collecting all " + str(year) + " submissions from /r/" + subreddit + "...")
+            get_submissions(subreddit)
     print(time.strftime("%a %b %d %H:%M:%S %Z"),
           " -- Done, elapsed time: ", str(time.time() - start_time))
 
 
-def init():
+def init(year, subreddit):
     global SEARCH_LIMIT, MAX_ROWS, MIN_COMMENTS, OUT_CSV_NAME, SUBREDDIT, START_EPOCH, END_EPOCH, RAW_FIELDS
     
     print(time.strftime("%a %b %d %H:%M:%S %Z") + " -- Starting program...")
     
-    year = 2016
-    days_delta = 365
-    SUBREDDIT = "upliftingnews"
-    
-    SEARCH_LIMIT = 1000  # max number of rows returned per api request (max 1000)
-    MAX_ROWS = 1048000  # approx excel lim (for convenience)
-    MIN_COMMENTS = 1  # minimum comments for a submission to be downloaded (in an effort to filter out spam posts)
     START_EPOCH = int(dt.datetime(year, 1, 1).timestamp())
+    days_delta = 365
     END_EPOCH = START_EPOCH + days_delta*24*60*60  # days in seconds
-
-    OUT_CSV_NAME = "reddit_" + SUBREDDIT + str(year) + "_" + str(days_delta) + ".csv"  # name of created CSV file
+    SEARCH_LIMIT = 1000  # max number of rows returned per api request (max 1000)
+    MIN_COMMENTS = 1  # minimum comments for a submission to be downloaded (in an effort to filter out spam posts)
     
-    RAW_FIELDS = ['url','author', 'title', 'subreddit', 'created_utc', 'permalink', 'score', 'id', 'num_comments','domain', 'locked']
+    OUT_CSV_NAME = subreddit + str(year) + "_" + str(days_delta) + "_"+ str(MIN_COMMENTS) +"com0scr.csv"  # name of created CSV file
+    
+    RAW_FIELDS = ['url','author', 'title', 'subreddit', 'id', 'permalink', 'score', 'num_comments','domain']
 
 
-def get_submissions():
+def get_submissions(sub_name):
 
     api = PushshiftAPI()
 
     submissions = pd.DataFrame()
 
-    sub_name=SUBREDDIT
     search_lim = SEARCH_LIMIT
     fields = RAW_FIELDS
     min_comments = MIN_COMMENTS
@@ -50,7 +49,7 @@ def get_submissions():
     submissions = submissions[submissions["num_comments"]>=min_comments]
 
 
-    while len(submissions)<MAX_ROWS and start_epoch<END_EPOCH:
+    while start_epoch<END_EPOCH:
         search_results = api.search_submissions(after=start_epoch, subreddit=sub_name, filter=fields, limit=search_lim)
         temp_submissions = pd.DataFrame.from_dict(search_results).loc[:,"d_"].to_frame()
         temp_submissions = temp_submissions["d_"].apply(pd.Series)
@@ -58,10 +57,9 @@ def get_submissions():
         temp_submissions = temp_submissions[temp_submissions["num_comments"]>=min_comments]
         if len(temp_submissions)>0:
             submissions = submissions.append(temp_submissions, ignore_index=True)  # add search results to dataset
-        print(start_epoch)
-        print(len(submissions))  # to see progress
+    submissions.to_csv("C:\\Users\\zande\\Documents\\Ryerson\\Capstone\\Data\\Raw\\" + OUT_CSV_NAME)
+    print(time.strftime("%a %b %d %H:%M:%S %Z") + " -- File " + OUT_CSV_NAME + " saved successfully with " + str(len(submissions)) + " rows.")
 
-    #submissions.to_csv(OUT_CSV_NAME)
 
 
 if __name__=="__main__":
